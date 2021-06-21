@@ -1,10 +1,8 @@
 use actix_service::Service;
-use actix_web::{
-    dev::{ServiceRequest, ServiceResponse},
-    http, Error, HttpResponse,
-};
+use actix_web::{dev::{ServiceRequest, ServiceResponse}, http, Error, HttpResponse, BaseHttpResponse};
 use futures::future::{ok, Either, Ready};
 use std::task::{Context, Poll};
+use actix_web::dev::AnyBody;
 
 pub struct RedirectSchemeService<S> {
     pub service: S,
@@ -16,21 +14,21 @@ pub struct RedirectSchemeService<S> {
 
 type ReadyResult<R, E> = Ready<Result<R, E>>;
 
-impl<S, B> Service for RedirectSchemeService<S>
+impl<S, B> Service<ServiceRequest> for RedirectSchemeService<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
+    AnyBody: Into<BaseHttpResponse<B>>
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
     type Future = Either<S::Future, ReadyResult<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(&self, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         if self.disable
             || (!self.https_to_http && req.connection_info().scheme() == "https")
             || (self.https_to_http && req.connection_info().scheme() == "http")

@@ -2,7 +2,7 @@ use crate::service::RedirectSchemeService;
 use actix_service::{Service, Transform};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::{Error, BaseHttpResponse};
-use futures::future::{ok, Ready};
+use futures::future::{ok, Ready, LocalBoxFuture};
 use actix_web::body::AnyBody;
 
 #[derive(Default, Clone)]
@@ -40,8 +40,7 @@ impl RedirectScheme {
 
 impl<S, B> Transform<S, ServiceRequest> for RedirectScheme
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error, Future = LocalBoxFuture<'static, Result<ServiceResponse, Error>>>,
     AnyBody: Into<BaseHttpResponse<B>>
 {
     type Response = ServiceResponse<B>;
